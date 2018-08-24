@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<form id="connect_form" action="{% url 'vielth:chat' %}" method="POST">
+    {% csrf_token %}
+    <input type="text" name="channel_name" id="channel_name" value="StavoR42"
+           placeholder="Название канала">
+    <input type="submit" id="connect_btn" value="Подключиться">
+</form>
+
+{% endblock %}

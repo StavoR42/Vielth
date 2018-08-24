@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block content %}
+    <form id="disconnect_form" action="{% url 'vielth:disconnect' %}" method="GET">
+        <input type="submit" id="disconnect_btn" value="Отключиться">
+    </form>
+
+    <div id="chat"></div>
+{% endblock %}
+
+{% block js_at_end %}
+    <script src="{% static 'js/index.js' %}"></script>
+{% endblock %}
