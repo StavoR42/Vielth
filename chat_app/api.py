@@ -9,26 +9,66 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
 
-from models import Message, ExtendedEAVSettings as Settings
-from enums import BracesDict
+from models import Message, ExtendedEAVSetting as Setting
+from enums import BracesDict, ReasonsEnum, SettingsEnum, ModerationActionsEnum
 
 PING = 'PING'
 PONG = 'PONG'
 
 
 class MsgSender(object):
-    @staticmethod
-    def send_message(twitch_socket, message, channel_name):
+    """Класс, отвечающий за отправку сообщений"""
+    def __init__(self, channel_name):
+        super().__init__()
+        self.channel_name = channel_name
+
+    def send_message(self, twitch_socket, message):
         """Отправка сообщения в чат канала"""
-        twitch_socket.send(bytes(f'PRIVMSG #{channel_name} :{message}\r\n'.encode()))
+        twitch_socket.send(bytes(f'PRIVMSG #{self.channel_name} :{message}\r\n'.encode()))
 
     @staticmethod
     def pong(twitch_socket, response):
         """Ответ на пинг твича"""
         twitch_socket.send(bytes(f'{PONG} {response}\r\n'.encode()))
 
+    def get_mods(self, twitch_socket):
+        """Получить имена модераторов"""
+        self.send_message(twitch_socket, '/mods')
+
+    def disconnect(self, twitch_socket):
+        """Команда на отключение от сервера чата"""
+        self.send_message(twitch_socket, '/disconnect')
+
+    # инструменты для модерации
+    def timeout(self, twitch_socket, username, seconds=600):
+        """Команда на таймаут"""
+        timeout = ModerationActionsEnum.TIMEOUT
+        self.send_message(twitch_socket, f'/{timeout} {username} {seconds}')
+
+    def purge(self, twitch_socket, username):
+        """Команда на пурж. Пурж - внутренне понятие, на самом деле это таймаут на 1 секунду"""
+        self.timeout(twitch_socket, username, 1)
+
+    def ban(self, twitch_socket, username):
+        """Команда на бан"""
+        ban = ModerationActionsEnum.BAN
+        self.send_message(twitch_socket, f'/{ban} {username}')
+
+    def unban(self, twitch_socket, username):
+        """Команда на анбан"""
+        unban = ModerationActionsEnum.UNBAN
+        self.send_message(twitch_socket, f'/{unban} {username}')
+
 
 class MsgValidator(object):
+    """Абстрактный класс валидатора"""
+    def validate(self, message):
+        """Общий метод валидации, возвращает кортеж (проверка пройдена, причина)"""
+        raise NotImplementedError()
+
+
+class BracesValidator(MsgValidator):
+    """Валидатор на скобки"""
     # словарь со счетчиками скобок
     counters = {x: 0 for x in BracesDict.ALL}
     # индексы скобок в строке
@@ -42,27 +82,17 @@ class MsgValidator(object):
     )
 
     def validate(self, message):
-        """Общий метод валидации, возвращает кортеж (проверка пройдена, причина)"""
-        braces_result = self._validate_braces(message)
-        if not braces_result:
-            return False, 'braces'
-
-        illegal_words_result = self._validate_illegal_words(message)
-        if not illegal_words_result:
-            return False, 'illegal_word'
-
-        return True, None
-
-    def _validate_braces(self, message):
-        """Валидация на скобки"""
+        # подсчет количества открывающихся и закрывающихся скобок
         count_validation_result = self._validate_braces_count(message)
         if count_validation_result:
-            return True
+            return True, None
 
         # смотрим на предмет исключений
         index_validation_result = self._validate_braces_index(message)
+        if index_validation_result:
+            return True, None
 
-        return index_validation_result
+        return False, ReasonsEnum.BRACES
 
     def _validate_braces_count(self, message):
         """Валидация по количеству скобок"""
@@ -107,20 +137,27 @@ class MsgValidator(object):
 
         return is_exception
 
-    def _validate_illegal_words(self, message):
-        """Валидация на запрещенные слова"""
-        # TODO: реализовать с полным списком и транслитом
-        return True
+
+class IllegalWordsValidator(MsgValidator):
+    """Валидатор на запрещенные слова"""
+    def validate(self, message):
+        #  пока что есть премодерация твича
+        return True, None
 
 
 class Connection(object):
-    MODT = False
+    MOTD = False
     twitch_socket = None
 
-    def __init__(self, msg_sender, channel_name):
+    def __init__(self, msg_sender, validators):
         super().__init__()
-        self.channel_name = channel_name
         self.msg_sender = msg_sender
+        self.channel_name = msg_sender.channel_name
+        self.validators = validators
+        self.moderators = self._get_mods()
+        self.is_mod = settings.NICK.lower() in self.moderators
+        self.is_owner = settings.NICK == self.channel_name
+
         self._connect_to_server()
         self._start_loop()
     
@@ -142,25 +179,25 @@ class Connection(object):
         t = currentThread()
 
         readbuffer = ''
-        s = self.twitch_socket
+        twitch_socket = self.twitch_socket
 
         # настройка сохранения сообщений в бд
-        save_messages = Settings.objects.filter(setting_name='save_messages').first()
+        save_messages = Setting.objects.filter(setting_name='save_messages').first()
         if save_messages:
             save_messages = save_messages.setting_switch
 
         while getattr(t, 'do_run', True):
-            r, _, _ = select.select([s], [], [])
+            r, _, _ = select.select([twitch_socket], [], [])
             if r:
                 # обработка пришедшего сообщения
-                readbuffer = readbuffer + s.recv(4096).decode()
+                readbuffer = readbuffer + twitch_socket.recv(4096).decode()
                 temp = readbuffer.split('\n')
                 readbuffer = temp.pop()
 
                 for line in temp:
                     # ответка твичу на пинг
                     if line[0] == PING:
-                        self.msg_sender.pong(s, line[1])
+                        self.msg_sender.pong(twitch_socket, line[1])
                         continue
 
                     # парсинг строки
@@ -172,7 +209,7 @@ class Connection(object):
 
                     if process_condition:
                         username, message = self._process_incoming(parts)
-                        if self.MODT:
+                        if self.MOTD:
                             print(f'{username}: {message}')
 
                             # сохранение сообщений
@@ -183,7 +220,12 @@ class Connection(object):
                                 )
 
                             # валидация (напр. на скобки)
-                            is_valid, reason = MsgValidator().validate(message)
+                            is_valid = True,
+                            reason = None
+                            for validator in self.validators:
+                                is_valid, reason = validator.validate(message)
+                                if not is_valid:
+                                    break
 
                             # отправка сообщения на страницу через вебсокет
                             _now = datetime.datetime.now().strftime('%H:%M:%S')
@@ -202,7 +244,12 @@ class Connection(object):
                                     }, ensure_ascii=False)
                                 })
 
-                        self.motd_pass(parts)
+                        self._motd_pass(parts)
+
+        self.msg_sender.disconnect(twitch_socket)
+        twitch_socket.shutdown(socket.SHUT_RDWR)
+        twitch_socket.close()
+        print('disconnected')
 
     @staticmethod
     def _process_incoming(parts):
@@ -219,19 +266,29 @@ class Connection(object):
 
         return username, message
 
-    def motd_pass(self, parts):
+    def _get_mods(self):
+        mods_line = self.msg_sender.get_mods(self.twitch_socket, self.channel_name)
+        # TODO: должен быть список модеров
+        return []
+
+    def _motd_pass(self, parts):
         """
         Первое сообщение от твича при коннекте - MOTD (Message of the Day),
         необходимо обработать его первым прежде чем работать с чатом
         """
         for l in parts:
             if 'End of /NAMES list' in l:
-                self.MODT = True
+                self.MOTD = True
 
 
 def thread_loop_init(channel_name):
-    msg_sender = MsgSender()
-    connection = Connection(msg_sender, channel_name)
-    connection.twitch_socket.shutdown(socket.SHUT_RDWR)
-    connection.twitch_socket.close()
-    print('disconnected')
+    """Функция, запускающая сокет. Предназначена для использования в отдельном треде (иначе приложение повиснет)"""
+    # TODO: в сендер еще бы сразу твич сокет пихнуть, но он начинает крутиться только внутри класса Connection
+    # TODO: возможно, стоит переделать структуру
+    msg_sender = MsgSender(channel_name)
+    Connection(msg_sender, validators=(BracesValidator, ))
+
+
+def settings_check():
+    """Проверка на заполненность настроек"""
+    return Setting.objects.count() == len(SettingsEnum.values.keys())

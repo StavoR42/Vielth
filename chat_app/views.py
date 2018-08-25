@@ -5,7 +5,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 
-from chat_app.api import thread_loop_init
+from chat_app.api import thread_loop_init, settings_check
 
 THREAD = None
 
@@ -15,7 +15,8 @@ def main(request):
 
 
 def connect(request):
-    return render(request, 'vielth_app/connect.html', {})
+    template = 'vielth_app/connect.html' if settings_check() else 'vielth_app/settings_error.html'
+    return render(request, template, {})
 
 
 def chat(request):
