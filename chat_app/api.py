@@ -1,7 +1,6 @@
 # coding: utf-8
 import datetime
 import json
-import socket
 import select
 from threading import currentThread
 
@@ -9,6 +8,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
 
+from helpers import connection
 from models import Message, ExtendedEAVSetting as Setting
 from enums import BracesDict, ReasonsEnum, SettingsEnum, ModerationActionsEnum
 
@@ -18,46 +18,46 @@ PONG = 'PONG'
 
 class MsgSender(object):
     """Класс, отвечающий за отправку сообщений"""
-    def __init__(self, channel_name):
+    def __init__(self, twitch_socket, channel_name):
         super().__init__()
+        self.twitch_socket = twitch_socket
         self.channel_name = channel_name
 
-    def send_message(self, twitch_socket, message):
+    def send_message(self, message):
         """Отправка сообщения в чат канала"""
-        twitch_socket.send(bytes(f'PRIVMSG #{self.channel_name} :{message}\r\n'.encode()))
+        self.twitch_socket.send(bytes(f'PRIVMSG #{self.channel_name} :{message}\r\n'.encode()))
 
-    @staticmethod
-    def pong(twitch_socket, response):
+    def pong(self, response):
         """Ответ на пинг твича"""
-        twitch_socket.send(bytes(f'{PONG} {response}\r\n'.encode()))
+        self.twitch_socket.send(bytes(f'{PONG} {response}\r\n'.encode()))
 
-    def get_mods(self, twitch_socket):
+    def get_mods(self):
         """Получить имена модераторов"""
-        self.send_message(twitch_socket, '/mods')
+        self.send_message('/mods')
 
-    def disconnect(self, twitch_socket):
+    def disconnect(self):
         """Команда на отключение от сервера чата"""
-        self.send_message(twitch_socket, '/disconnect')
+        self.send_message('/disconnect')
 
     # инструменты для модерации
-    def timeout(self, twitch_socket, username, seconds=600):
+    def timeout(self, username, seconds=600):
         """Команда на таймаут"""
         timeout = ModerationActionsEnum.TIMEOUT
-        self.send_message(twitch_socket, f'/{timeout} {username} {seconds}')
+        self.send_message(f'/{timeout} {username} {seconds}')
 
-    def purge(self, twitch_socket, username):
+    def purge(self, username):
         """Команда на пурж. Пурж - внутренне понятие, на самом деле это таймаут на 1 секунду"""
-        self.timeout(twitch_socket, username, 1)
+        self.timeout(username, 1)
 
-    def ban(self, twitch_socket, username):
+    def ban(self, username):
         """Команда на бан"""
         ban = ModerationActionsEnum.BAN
-        self.send_message(twitch_socket, f'/{ban} {username}')
+        self.send_message(f'/{ban} {username}')
 
-    def unban(self, twitch_socket, username):
+    def unban(self, username):
         """Команда на анбан"""
         unban = ModerationActionsEnum.UNBAN
-        self.send_message(twitch_socket, f'/{unban} {username}')
+        self.send_message(f'/{unban} {username}')
 
 
 class MsgValidator(object):
@@ -141,7 +141,7 @@ class BracesValidator(MsgValidator):
 class IllegalWordsValidator(MsgValidator):
     """Валидатор на запрещенные слова"""
     def validate(self, message):
-        #  пока что есть премодерация твича
+        # TODO реализовать translit и jib,re hfcrkflrb (ошибку раскладки)
         return True, None
 
 
@@ -149,31 +149,22 @@ class Connection(object):
     MOTD = False
     twitch_socket = None
 
-    def __init__(self, msg_sender, validators):
+    def __init__(self, twitch_socket, msg_sender, validators):
         super().__init__()
+        self.twitch_socket = twitch_socket
         self.msg_sender = msg_sender
-        self.channel_name = msg_sender.channel_name
         self.validators = validators
-        self.moderators = self._get_mods()
-        self.is_mod = settings.NICK.lower() in self.moderators
-        self.is_owner = settings.NICK == self.channel_name
 
-        self._connect_to_server()
+        self.channel_name = msg_sender.channel_name
+        self.moderators = self._get_mods()
+        self.is_owner = settings.NICK == self.channel_name
+        self.is_mod = settings.NICK.lower() in self.moderators or self.is_owner
+
         self._start_loop()
     
-    def _connect_to_server(self):
-        """
-        Подключение к IRC-серверу
-        """
-        twitch_socket = self.twitch_socket = socket.socket()
-        twitch_socket.connect((settings.HOST, settings.PORT))
-        twitch_socket.send(bytes(f'PASS {settings.PASS}\r\n'.encode()))
-        twitch_socket.send(bytes(f'NICK {settings.NICK}\r\n'.encode()))
-        twitch_socket.send(bytes(f'JOIN #{self.channel_name} \r\n'.encode()))
-
     def _start_loop(self):
         # подключение к вебсокетам
-        channel_layer = get_channel_layer()
+        websocket = get_channel_layer()
 
         # получаем тред, в котором крутится твич сокет, чтобы прокидывать флаг отключения
         t = currentThread()
@@ -197,7 +188,7 @@ class Connection(object):
                 for line in temp:
                     # ответка твичу на пинг
                     if line[0] == PING:
-                        self.msg_sender.pong(twitch_socket, line[1])
+                        self.msg_sender.pong(line[1])
                         continue
 
                     # парсинг строки
@@ -213,23 +204,27 @@ class Connection(object):
                             print(f'{username}: {message}')
 
                             # сохранение сообщений
+                            db_message_id = None
                             if save_messages:
-                                Message.objects.create(
+                                db_message = Message.objects.create(
                                     username=username,
                                     message=message
                                 )
+                                db_message_id = db_message
 
                             # валидация (напр. на скобки)
-                            is_valid = True,
+                            is_valid = True
                             reason = None
-                            for validator in self.validators:
-                                is_valid, reason = validator.validate(message)
-                                if not is_valid:
-                                    break
+
+                            if self.is_mod or SettingsEnum.get_setting(SettingsEnum.ALWAYS_VALIDATE):
+                                for validator in self.validators:
+                                    is_valid, reason = validator.validate(message)
+                                    if not is_valid:
+                                        break
 
                             # отправка сообщения на страницу через вебсокет
                             _now = datetime.datetime.now().strftime('%H:%M:%S')
-                            async_to_sync(channel_layer.group_send)(
+                            async_to_sync(websocket.group_send)(
                                 settings.WEBSOCKET_CHANNEL,
                                 {
                                     # название метода в классе консумера, в модуле consumers
@@ -241,15 +236,14 @@ class Connection(object):
                                         'datetime': _now,
                                         'username': username,
                                         'message': message,
+                                        'db_message_id': db_message_id,
+                                        'is_mod': self.is_mod,
                                     }, ensure_ascii=False)
                                 })
 
                         self._motd_pass(parts)
 
-        self.msg_sender.disconnect(twitch_socket)
-        twitch_socket.shutdown(socket.SHUT_RDWR)
-        twitch_socket.close()
-        print('disconnected')
+        self.msg_sender.disconnect()
 
     @staticmethod
     def _process_incoming(parts):
@@ -267,7 +261,7 @@ class Connection(object):
         return username, message
 
     def _get_mods(self):
-        mods_line = self.msg_sender.get_mods(self.twitch_socket, self.channel_name)
+        mods_line = self.msg_sender.get_mods(self.channel_name)
         # TODO: должен быть список модеров
         return []
 
@@ -283,12 +277,9 @@ class Connection(object):
 
 def thread_loop_init(channel_name):
     """Функция, запускающая сокет. Предназначена для использования в отдельном треде (иначе приложение повиснет)"""
-    # TODO: в сендер еще бы сразу твич сокет пихнуть, но он начинает крутиться только внутри класса Connection
-    # TODO: возможно, стоит переделать структуру
-    msg_sender = MsgSender(channel_name)
-    Connection(msg_sender, validators=(BracesValidator, ))
+    with connection(channel_name) as twitch_socket:
+        msg_sender = MsgSender(twitch_socket, channel_name)
+        Connection(twitch_socket, msg_sender, validators=(BracesValidator, ))
 
 
-def settings_check():
-    """Проверка на заполненность настроек"""
-    return Setting.objects.count() == len(SettingsEnum.values.keys())
+

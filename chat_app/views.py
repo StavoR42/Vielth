@@ -5,7 +5,9 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 
-from chat_app.api import thread_loop_init, settings_check
+from chat_app.api import thread_loop_init
+from chat_app.helpers import settings_check
+from chat_app.enums import SettingsEnum
 
 THREAD = None
 
@@ -15,8 +17,16 @@ def main(request):
 
 
 def connect(request):
-    template = 'vielth_app/connect.html' if settings_check() else 'vielth_app/settings_error.html'
-    return render(request, template, {})
+    check_result = settings_check()
+    context = {}
+
+    if check_result:
+        template = 'vielth_app/connect.html'
+        context['channel_name'] = SettingsEnum.get_setting(SettingsEnum.DEFAULT_CHANNEL)
+    else:
+        template = 'vielth_app/settings_error.html'
+
+    return render(request, template, context)
 
 
 def chat(request):

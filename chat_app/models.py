@@ -3,7 +3,7 @@
 
 from django.db import models
 
-from enums import ReasonsEnum, SettingsEnum
+from chat_app.enums import ReasonsEnum, SettingsEnum
 
 
 class Channel(models.Model):

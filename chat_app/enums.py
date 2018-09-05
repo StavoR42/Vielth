@@ -31,7 +31,7 @@ class BracesDict(BaseDict):
     # все фигурные скобки
     BRACES = (BRACE_OPEN, BRACE_CLOSE)
     # все круглые скобки
-    PARENTHESES = [PARENTHESIS_OPEN, PARENTHESIS_CLOSE]
+    PARENTHESES = (PARENTHESIS_OPEN, PARENTHESIS_CLOSE)
     # все квадратные скобки
     SQUARES = (SQUARE_OPEN, SQUARE_CLOSE)
 
@@ -87,11 +87,12 @@ class SettingsEnum(BaseEnumerate):
         SettingsEnum.create_settings()
     для корректной работы.
     """
-    AUTO_MODERATION = 'auto_moderation',  # автомодерация
-    AUTO_WARNING = 'auto_warning',  # автоварнинги пользователям
-    SAVE_MESSAGES = 'save_messages',  # сохранение сообщений в бд
-    LOG_BANS = 'log_bans',  # логгирование банов/таймаутов
-    ALWAYS_VALIDATE = 'always_validate',  # производить валидацию сообщений, даже если не модератор
+    AUTO_MODERATION = 'auto_moderation'  # автомодерация
+    AUTO_WARNING = 'auto_warning'  # автоварнинги пользователям
+    SAVE_MESSAGES = 'save_messages'  # сохранение сообщений в бд
+    LOG_BANS = 'log_bans'  # логгирование банов/таймаутов
+    ALWAYS_VALIDATE = 'always_validate'  # производить валидацию сообщений, даже если не модератор
+    DEFAULT_CHANNEL = 'default_channel'  # канал, название которого автоматом подставится при коннекте
 
     # переключаемые настройки
     is_bool = (
@@ -103,7 +104,9 @@ class SettingsEnum(BaseEnumerate):
     )
 
     # настройки, предполагающие хранение строки
-    is_string = ()
+    is_string = (
+        DEFAULT_CHANNEL,
+    )
 
     # настройки, предполагающие хранение списка в виде строки с разделителем "|"
     is_list = ()
@@ -115,6 +118,7 @@ class SettingsEnum(BaseEnumerate):
         SAVE_MESSAGES: 'Сохранение пользователей в БД',
         LOG_BANS: 'Вести лог банов/таймаутов',
         ALWAYS_VALIDATE: 'Производить валидацию сообщений без статуса модератора',
+        DEFAULT_CHANNEL: 'Название канала',
     }
 
     # дефолтные значения
@@ -124,6 +128,7 @@ class SettingsEnum(BaseEnumerate):
         SAVE_MESSAGES: True,
         LOG_BANS: True,
         ALWAYS_VALIDATE: False,
+        DEFAULT_CHANNEL: '',
     }
 
     @classmethod

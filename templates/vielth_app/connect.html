@@ -4,7 +4,7 @@
 
 <form id="connect_form" action="{% url 'vielth:chat' %}" method="POST">
     {% csrf_token %}
-    <input type="text" name="channel_name" id="channel_name" value="StavoR42"
+    <input type="text" name="channel_name" id="channel_name" value="{{ channel_name }}"
            placeholder="Название канала">
     <input type="submit" id="connect_btn" value="Подключиться">
 </form>
