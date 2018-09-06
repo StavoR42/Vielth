@@ -1,6 +1,5 @@
 # coding: utf-8
 
-
 from django.db import models
 
 from chat_app.enums import ReasonsEnum, SettingsEnum
@@ -26,7 +25,8 @@ class Message(models.Model):
 
 
 class BanLog(models.Model):
-    message = models.ForeignKey(Message, verbose_name='Сообщение, за которое забанили')
+    channel = models.ForeignKey(Channel, verbose_name='Канал')
+    username = models.CharField('Забаненный', max_length=200)
     ban_date = models.DateTimeField('Дата бана', auto_now_add=True)
     ban_type = models.CharField('Тип бана', choices=ReasonsEnum.get_choices(), max_length=20)
 

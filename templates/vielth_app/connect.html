@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 
@@ -8,5 +9,10 @@
            placeholder="Название канала">
     <input type="submit" id="connect_btn" value="Подключиться">
 </form>
+    <button id="save_channel_name" name="save_channel_name" onclick="save_channel_name()">Сохранить название канала</button>
 
+{% endblock %}
+
+{% block js_at_end %}
+    <script src="{% static 'js/starting_page.js' %}"></script>
 {% endblock %}

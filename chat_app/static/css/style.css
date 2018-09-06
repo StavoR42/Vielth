@@ -1,0 +1,310 @@
+body {
+    padding-top: 20px;
+}
+
+.no-underline a {
+    text-decoration: none;
+}
+
+.green-text {
+    background-color: rgba(245, 245, 245, 0.75);
+    border: 1px solid #e3e3e3;
+    border-radius: 4px;
+    padding-top: 10px;
+    margin-right: 8px;
+}
+
+.green-text a {
+    color: #2e732e;
+}
+
+.green-text li{
+    cursor: pointer;
+    padding: 3px;
+}
+
+.green-text li:hover {
+    color: #2d642d;
+    background-color: rgba(46, 242, 0, 0.2);
+}
+
+.green-text li a {
+    display: block;
+}
+
+.no-color a {
+    color: black;
+}
+
+.form-group.required .control-label:after {
+    content: "*";
+    color: red;
+}
+
+.video-container {
+    position: relative;
+    padding-bottom: 56.25%;
+    padding-top: 30px;
+    height: 0;
+    overflow: hidden;
+}
+
+.video-container iframe, .video-container object, .video-container embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.sm2-bar-ui {
+    font-size: 16px;
+}
+
+.sm2-bar-ui .sm2-main-controls,
+.sm2-bar-ui .sm2-playlist-drawer {
+    /*background-color: #FFF; /!* non-RGBA fallback *!/*/
+    /*background-color: rgba(24, 130, 21, 0.83);*/
+    background-color: rgba(0, 0, 0, 0);
+}
+
+/*.sm2-bar-ui .sm2-inline-texture {*/
+    /*background: url(../soundmanagerv297a-20150601/demo/bar-ui/image/patterns/pool_table.png);*/
+/*}*/
+
+.navbar-green {
+    -webkit-box-shadow: inset 0 2em 5em -0.75em #2e732e;
+    -moz-box-shadow: inset 0 2em 5em -0.75em #2e732e;
+    box-shadow: inset 0 2em 5em -0.75em #2e732e;
+}
+
+.navbar-white-text {
+    background-color: rgba(46, 115, 46, 0.45);
+    color: #FFF
+}
+
+.navbar-white-text:hover {
+    background-color: #FFF;
+    color: rgba(46, 115, 46, 0.45)
+}
+
+.navbar-brand-image {
+    margin-left: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.navbar-text-margin {
+    margin-right: 10px;
+}
+
+.images-from-album-preview {
+    position: relative;
+}
+
+.images-from-album-preview a {
+    position: absolute;
+    color: #333;
+    float: right;
+    padding-left: 2px;
+    padding-right: 4px;
+    text-decoration: none;
+    background: rgba(128, 128, 128, 0.4);
+}
+
+#attachment_list_style {
+    font-style: italic;
+    border: 1px;
+    border-radius: 10px;
+    background-color: #fcfcfc;
+    box-shadow: inset 0 0 5px #006207;
+    padding: 5px;
+}
+
+#attachment_list_style > div {
+    margin-left: 20px;
+}
+
+#attachment_list_style > div > div {
+    margin-left: 30px;
+}
+
+.loading-gif {
+   background: url('http://www.hsi.com.hk/HSI-Net/pages/images/en/share/ajax-loader.gif') no-repeat right center;
+}
+
+.news-comment-show-more {
+    background-color: rgba(46, 242, 0, 0.2);
+    width: 100%;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+}
+
+.news-comment-show-more a {
+    display: block;
+    text-decoration: none;
+}
+
+hr {
+    border-top: 1px solid #888
+}
+
+.hr-bold {
+    border-top: 2px solid #888
+}
+
+.hr-short {
+    width: 80%
+}
+
+.no-left-padding {
+    padding-left: 0;
+}
+
+.div-btn-top-margin {
+    padding-left: 0;
+    margin-top: 12px;
+}
+
+/*.background {*/
+    /*background: url('../img/d0uMbzF-wallpaper-shamrock.jpg') no-repeat fixed center;*/
+    /*background-size: 150%;*/
+    /*position: absolute;*/
+    /*padding-top: 5px;*/
+    /*margin-left: -20px;*/
+    /*margin-right: -20px;*/
+/*}*/
+
+body {
+    background: url('../img/d0uMbzF-wallpaper-shamrock.jpg') no-repeat fixed center;
+    background-size: 150%;
+}
+
+#main-content {
+    margin-bottom: 10px;
+    background-color: rgba(245, 245, 245, 0.75);
+}
+
+.img-eq-height-sm {
+    width: 110px;
+    height: 100px;
+    text-align: center;
+    display: table-cell;
+    vertical-align: middle;
+}
+
+.ovf-hid-sm {
+	width: 100px;
+	height: 100px;
+	display: inline-block;
+	overflow: hidden;
+}
+
+.img-eq-height {
+    width: 100%;
+    height: 150px;
+    text-align: center;
+    display: table-cell;
+    vertical-align: middle;
+    overflow: hidden;
+}
+
+.ovf-hid {
+	width: auto;
+	height: 150px;
+	display: inline-block;
+	overflow: hidden;
+}
+
+.outer-div-lg {
+    width: 150px;
+    height: 150px;
+    background-position: center center;
+    background-repeat: no-repeat;
+    overflow: hidden;
+    margin: 5px auto;
+}
+
+.outer-div-img {
+    min-height: 100%;
+    min-width: 100%;
+    /* IE 8 */
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";
+    /* IE 5-7 */
+    filter: alpha(opacity=0);
+    /* modern browsers */
+    opacity: 0;
+}
+
+.outer-div {
+    width: 135px;
+    height: 135px;
+    background-position: center center;
+    background-repeat: no-repeat;
+    overflow: hidden;
+    margin: 5px auto;
+}
+
+.outer-div-sm {
+    width: 100px;
+    height: 100px;
+    background-position: center center;
+    background-repeat: no-repeat;
+    overflow: hidden;
+    margin: 5px auto;
+}
+
+#send_message_form_div {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+}
+
+#chat_wrapper {
+    position: relative;
+}
+
+#chat {
+    overflow: auto;
+    position: absolute;
+    width: 100%;
+
+    /*bottom: 20px;*/
+    /*display: table-cell;*/
+    /*vertical-align: bottom;*/
+    /*margin-bottom: 100px;*/
+}
+
+.text-with-horizontal-line {
+    overflow: hidden;
+    text-align: center;
+}
+.text-with-horizontal-line:before,
+.text-with-horizontal-line:after {
+    background-color: #000;
+    content: "";
+    display: inline-block;
+    height: 1px;
+    position: relative;
+    vertical-align: middle;
+    width: 50%;
+}
+.text-with-horizontal-line:before {
+    right: 0.5em;
+    margin-left: -50%;
+}
+.text-with-horizontal-line:after {
+    left: 0.5em;
+    margin-right: -50%;
+}
+
+.message-unread {
+    background-color: rgba(46, 242, 0, 0.2);
+}
+
+#messages_text_input {
+    resize: none;
+    max-height: 200px;
+}

@@ -135,7 +135,7 @@ class SettingsEnum(BaseEnumerate):
     def save_setting(cls, setting_name, value=None):
         """Сохранение настройки"""
         # локальный импорт, чтобы не было цикличности
-        from models import ExtendedEAVSetting as Setting
+        from chat_app.models import ExtendedEAVSetting as Setting
 
         # не сохраняем, если нет в енуме
         if setting_name not in cls.values.keys():
@@ -161,8 +161,8 @@ class SettingsEnum(BaseEnumerate):
         if not setting:
             setting = Setting()
 
-        setting.name = setting_name
-        setting.setting_verbose_name = cls.values[setting]
+        setting.setting_name = setting_name
+        setting.setting_verbose_name = cls.values[setting_name]
         if not is_default and list_valid:
             # обработка списка
             setting.setting_values = value
@@ -180,7 +180,7 @@ class SettingsEnum(BaseEnumerate):
         Обязательно к использованию, т. к. без настроек приложение крашнется. Стоит проверка на главной странице
         """
         # локальный импорт чтобы не было цикличности
-        from models import ExtendedEAVSetting as Setting
+        from chat_app.models import ExtendedEAVSetting as Setting
 
         # в случае замены считаем, что существующих настроек нет
         existing_setting_names = () if replace else Setting.objects.values_list('setting_name', flat=True)
@@ -195,7 +195,7 @@ class SettingsEnum(BaseEnumerate):
     def get_setting(cls, setting_name):
         """Возвращает значение настройки"""
         # локальный импорт чтобы не было цикличности
-        from models import ExtendedEAVSetting as Setting
+        from chat_app.models import ExtendedEAVSetting as Setting
 
         setting = Setting.objects.filter(setting_name=setting_name).first()
         if not setting:

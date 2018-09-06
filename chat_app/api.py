@@ -8,9 +8,9 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
 
-from helpers import connection
-from models import Message, ExtendedEAVSetting as Setting
-from enums import BracesDict, ReasonsEnum, SettingsEnum, ModerationActionsEnum
+from chat_app.helpers import connection
+from chat_app.models import Message, ExtendedEAVSetting as Setting, Channel
+from chat_app.enums import BracesDict, ReasonsEnum, SettingsEnum, ModerationActionsEnum
 
 PING = 'PING'
 PONG = 'PONG'
@@ -156,6 +156,7 @@ class Connection(object):
         self.validators = validators
 
         self.channel_name = msg_sender.channel_name
+        self.channel, _ = Channel.objects.get_or_create(channel_name=self.channel_name)
         self.moderators = self._get_mods()
         self.is_owner = settings.NICK == self.channel_name
         self.is_mod = settings.NICK.lower() in self.moderators or self.is_owner
@@ -205,12 +206,13 @@ class Connection(object):
 
                             # сохранение сообщений
                             db_message_id = None
-                            if save_messages:
+                            if save_messages and (username and message):
                                 db_message = Message.objects.create(
+                                    channel=self.channel,
                                     username=username,
                                     message=message
                                 )
-                                db_message_id = db_message
+                                db_message_id = db_message.pk
 
                             # валидация (напр. на скобки)
                             is_valid = True
@@ -261,7 +263,7 @@ class Connection(object):
         return username, message
 
     def _get_mods(self):
-        mods_line = self.msg_sender.get_mods(self.channel_name)
+        mods_line = self.msg_sender.get_mods()
         # TODO: должен быть список модеров
         return []
 

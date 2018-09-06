@@ -4,8 +4,8 @@ from contextlib import contextmanager
 
 from django.conf import settings
 
-from enums import SettingsEnum
-from models import ExtendedEAVSetting as Setting
+from chat_app.enums import SettingsEnum
+from chat_app.models import ExtendedEAVSetting as Setting
 
 
 @contextmanager

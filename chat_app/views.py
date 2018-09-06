@@ -1,7 +1,8 @@
 # coding: utf-8
+import json
 from threading import Thread
 
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 
@@ -54,3 +55,16 @@ def disconnect(request):
     THREAD = None
 
     return HttpResponseRedirect(reverse('vielth:main'))
+
+
+def save_channel_name(request):
+    if request.method == 'POST':
+        try:
+            channel_name = request.POST.get('channel_name', '')
+            SettingsEnum.save_setting(SettingsEnum.DEFAULT_CHANNEL, channel_name)
+            return HttpResponse(json.dumps({'status': 'success', 'message': ''}))
+        except Exception as e:
+            return HttpResponse(json.dumps({'status': 'error', 'message': e}))
+
+    else:
+        return HttpResponse(json.dumps({'status': 'not_post', 'message': ''}))
