@@ -115,7 +115,7 @@ class SettingsEnum(BaseEnumerate):
     values = {
         AUTO_MODERATION: 'Автомодерация',
         AUTO_WARNING: 'Автоматические предупреждения при бане/таймауте',
-        SAVE_MESSAGES: 'Сохранение пользователей в БД',
+        SAVE_MESSAGES: 'Сохранение сообщений в БД',
         LOG_BANS: 'Вести лог банов/таймаутов',
         ALWAYS_VALIDATE: 'Производить валидацию сообщений без статуса модератора',
         DEFAULT_CHANNEL: 'Название канала',

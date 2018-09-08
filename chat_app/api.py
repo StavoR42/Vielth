@@ -7,13 +7,19 @@ from threading import currentThread
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
+from transliterate import translit
 
 from chat_app.helpers import connection
 from chat_app.models import Message, ExtendedEAVSetting as Setting, Channel
 from chat_app.enums import BracesDict, ReasonsEnum, SettingsEnum, ModerationActionsEnum
+from chat_app.illegal_words import ILLEGAL_WORDS
+from chat_app.command import CommandManager
 
 PING = 'PING'
 PONG = 'PONG'
+
+
+########################################################################################################################
 
 
 class MsgSender(object):
@@ -58,6 +64,9 @@ class MsgSender(object):
         """Команда на анбан"""
         unban = ModerationActionsEnum.UNBAN
         self.send_message(f'/{unban} {username}')
+
+
+########################################################################################################################
 
 
 class MsgValidator(object):
@@ -140,9 +149,54 @@ class BracesValidator(MsgValidator):
 
 class IllegalWordsValidator(MsgValidator):
     """Валидатор на запрещенные слова"""
+    keymap_dict = {
+        'q': 'й',
+        'w': 'ц',
+        'e': 'у',
+        'r': 'к',
+        't': 'е',
+        'y': 'н',
+        'u': 'г',
+        'i': 'ш',
+        'p': 'з',
+        '[': 'х',
+        ']': 'ъ',
+        'a': 'ф',
+        's': 'ы',
+        'd': 'в',
+        'g': 'п',
+        'h': 'р',
+        'j': 'о',
+        'k': 'л',
+        'l': 'д',
+        ';': 'ж',
+        "'": 'э',
+        'z': 'я',
+        'x': 'ч',
+        'c': 'с',
+        'v': 'м',
+        'b': 'и',
+        'n': 'т',
+        'm': 'ь',
+        ',': 'б',
+        '.': 'ю',
+    }
+
     def validate(self, message):
-        # TODO реализовать translit и jib,re hfcrkflrb (ошибку раскладки)
+        original = message
+        traslitted = translit(message, 'ru')
+        keymapped = message.translate(str.maketrans(self.keymap_dict))
+
+        # для ускорения проверки слепим все три результата в одну строку
+        mess = ' '.join((original, traslitted, keymapped))
+
+        if any(word in mess for word in ILLEGAL_WORDS):
+            return False, ReasonsEnum.ILLEGAL_WORD
+
         return True, None
+
+
+########################################################################################################################
 
 
 class Connection(object):
@@ -157,7 +211,7 @@ class Connection(object):
 
         self.channel_name = msg_sender.channel_name
         self.channel, _ = Channel.objects.get_or_create(channel_name=self.channel_name)
-        self.moderators = self._get_mods()
+        self.moderators = []
         self.is_owner = settings.NICK == self.channel_name
         self.is_mod = settings.NICK.lower() in self.moderators or self.is_owner
 
@@ -169,6 +223,9 @@ class Connection(object):
 
         # получаем тред, в котором крутится твич сокет, чтобы прокидывать флаг отключения
         t = currentThread()
+
+        # инициализация центра комманд
+        command_centre = CommandManager()
 
         readbuffer = ''
         twitch_socket = self.twitch_socket
@@ -217,6 +274,9 @@ class Connection(object):
                             # валидация (напр. на скобки)
                             is_valid = True
                             reason = None
+
+                            # проверяем, команда ли пришла
+                            command_centre.resolve_command(username, message, self.msg_sender)
 
                             if self.is_mod or SettingsEnum.get_setting(SettingsEnum.ALWAYS_VALIDATE):
                                 for validator in self.validators:
@@ -276,11 +336,19 @@ class Connection(object):
             if 'End of /NAMES list' in l:
                 self.MOTD = True
 
+        # тут получим список модераторов
+        self.moderators = self._get_mods()
+
 
 def thread_loop_init(channel_name):
     """Функция, запускающая сокет. Предназначена для использования в отдельном треде (иначе приложение повиснет)"""
     with connection(channel_name) as twitch_socket:
         msg_sender = MsgSender(twitch_socket, channel_name)
+        # для использования возможности посылания сообщений из мэйн треда
+        # возможно надо будет переделать
+        t = currentThread()
+        t.msg_sender = msg_sender
+
         Connection(twitch_socket, msg_sender, validators=(BracesValidator, ))
 
 
